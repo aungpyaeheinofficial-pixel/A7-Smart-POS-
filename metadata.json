@@ -1,0 +1,7 @@
+{
+  "name": " A7 Smart POS Red ",
+  "description": "Professional Smart POS System with Inventory and Analytics.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
