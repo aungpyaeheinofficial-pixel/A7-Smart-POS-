@@ -1,0 +1,268 @@
+// Prisma Schema for A7 Smart POS
+// PostgreSQL Database
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User/Staff Model
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String?
+  role         String   // ADMIN, MANAGER, PHARMACIST, CASHIER
+  avatar       String?
+  isActive     Boolean  @default(true) @map("is_active")
+  branchId     String?  @map("branch_id")
+  branch       Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([email])
+  @@index([branchId])
+  @@index([role])
+  @@map("users")
+}
+
+// Branch/Organization Model (Multi-tenant support)
+model Branch {
+  id          String   @id @default(uuid())
+  name        String
+  code        String   @unique
+  address     String?
+  phone       String?
+  email       String?
+  managerName String?  @map("manager_name")
+  logoUrl     String?  @map("logo_url")
+  status      String   @default("active") // active, inactive, archived
+  archivedAt  DateTime? @map("archived_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users            User[]
+  products         Product[]
+  customers        Customer[]
+  transactions     Transaction[]
+  purchaseOrders   PurchaseOrder[]
+  distributionOrders DistributionOrder[]
+  suppliers        Supplier[]
+  expenses         Expense[]
+
+  @@index([code])
+  @@index([status])
+  @@map("branches")
+}
+
+// Product Model
+model Product {
+  id                  String   @id @default(uuid())
+  sku                 String
+  gtin                String?  @unique
+  nameEn              String   @map("name_en")
+  nameMm              String?  @map("name_mm")
+  genericName         String?  @map("generic_name")
+  category            String
+  description         String?
+  price               Decimal  @db.Decimal(12, 2)
+  image               String?
+  stockLevel          Int      @default(0) @map("stock_level")
+  unit                String   @default("PCS")
+  minStockLevel       Int      @default(10) @map("min_stock_level")
+  location            String?
+  requiresPrescription Boolean @default(false) @map("requires_prescription")
+  branchId            String   @map("branch_id")
+  branch              Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  batches             Batch[]
+
+  @@index([branchId])
+  @@index([category])
+  @@index([sku])
+  @@index([gtin])
+  @@map("products")
+}
+
+// Batch/Lot Model (for expiry tracking)
+model Batch {
+  id          String   @id @default(uuid())
+  productId   String   @map("product_id")
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  batchNumber String   @map("batch_number")
+  expiryDate  DateTime @map("expiry_date")
+  quantity    Int      @default(0)
+  costPrice   Decimal  @db.Decimal(12, 2) @map("cost_price")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([productId])
+  @@index([expiryDate])
+  @@index([batchNumber])
+  @@map("batches")
+}
+
+// Customer Model
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String
+  points    Int      @default(0)
+  tier      String   @default("Silver") // Silver, Gold, Platinum
+  branchId  String   @map("branch_id")
+  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([branchId])
+  @@index([phone])
+  @@index([tier])
+  @@map("customers")
+}
+
+// Transaction Model (Sales/POS transactions)
+model Transaction {
+  id            String   @id @default(uuid())
+  type          String   // INCOME, EXPENSE
+  category      String
+  amount        Decimal  @db.Decimal(12, 2)
+  date          DateTime @db.Date
+  description   String
+  paymentMethod String?  @map("payment_method") // CASH, CARD, KBZ_PAY
+  branchId      String   @map("branch_id")
+  branch        Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  userId        String?  @map("user_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([branchId])
+  @@index([type])
+  @@index([date])
+  @@index([userId])
+  @@map("transactions")
+}
+
+// Supplier Model
+model Supplier {
+  id          String   @id @default(uuid())
+  name        String
+  contact     String
+  email       String?
+  credit      Decimal  @default(0) @db.Decimal(12, 2)
+  outstanding Decimal  @default(0) @db.Decimal(12, 2)
+  branchId    String   @map("branch_id")
+  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  purchaseOrders PurchaseOrder[]
+
+  @@index([branchId])
+  @@index([name])
+  @@map("suppliers")
+}
+
+// Purchase Order Model
+model PurchaseOrder {
+  id          String   @id @default(uuid())
+  supplierId  String   @map("supplier_id")
+  supplier    Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  supplierName String  @map("supplier_name") // Denormalized for history
+  date        DateTime @db.Date
+  status      String   @default("PENDING") // PENDING, ORDERED, RECEIVED, CANCELLED
+  paymentType String   @default("CASH") @map("payment_type") // CASH, CREDIT
+  totalAmount Decimal  @db.Decimal(12, 2) @map("total_amount")
+  notes       String?
+  branchId    String   @map("branch_id")
+  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  items PurchaseOrderItem[]
+
+  @@index([branchId])
+  @@index([supplierId])
+  @@index([status])
+  @@index([date])
+  @@map("purchase_orders")
+}
+
+// Purchase Order Item Model
+model PurchaseOrderItem {
+  id            String        @id @default(uuid())
+  purchaseOrderId String      @map("purchase_order_id")
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  name          String
+  quantity      Int
+  unitCost      Decimal       @db.Decimal(12, 2) @map("unit_cost")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  @@index([purchaseOrderId])
+  @@map("purchase_order_items")
+}
+
+// Distribution Order Model
+model DistributionOrder {
+  id            String   @id @default(uuid())
+  customer      String
+  address       String
+  status        String   @default("PENDING") // PENDING, PACKING, DELIVERING, COMPLETED
+  total         Decimal  @db.Decimal(12, 2)
+  date          DateTime @db.Date
+  deliveryTime  String   @map("delivery_time") // Time string (HH:mm)
+  paymentType   String   @default("CASH") @map("payment_type") // CASH, CREDIT
+  branchId      String   @map("branch_id")
+  branch        Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  items DistributionOrderItem[]
+
+  @@index([branchId])
+  @@index([status])
+  @@index([date])
+  @@map("distribution_orders")
+}
+
+// Distribution Order Item Model
+model DistributionOrderItem {
+  id                  String            @id @default(uuid())
+  distributionOrderId String            @map("distribution_order_id")
+  distributionOrder   DistributionOrder @relation(fields: [distributionOrderId], references: [id], onDelete: Cascade)
+  name                String
+  quantity            Int
+  price               Decimal           @db.Decimal(12, 2)
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+
+  @@index([distributionOrderId])
+  @@map("distribution_order_items")
+}
+
+// Expense Model
+model Expense {
+  id          String   @id @default(uuid())
+  category    String
+  amount      Decimal  @db.Decimal(12, 2)
+  date        DateTime @db.Date
+  description String
+  status      String   @default("PENDING") // PAID, PENDING
+  branchId    String   @map("branch_id")
+  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([branchId])
+  @@index([category])
+  @@index([status])
+  @@index([date])
+  @@map("expenses")
+}
+
