@@ -162,9 +162,10 @@ router.patch(
       }
 
       // Calculate total if items updated
-      let total = existing.total;
-      if (data.items) {
-        total = data.items.reduce(
+      const { items, ...updateData } = data;
+      let total: number = Number(existing.total);
+      if (items) {
+        total = items.reduce(
           (sum, item) => sum + item.quantity * item.price,
           0
         );
@@ -173,12 +174,12 @@ router.patch(
       const distributionOrder = await prisma.distributionOrder.update({
         where: { id: req.params.id },
         data: {
-          ...data,
+          ...updateData,
           total,
-          ...(data.items && {
+          ...(items && {
             items: {
               deleteMany: {},
-              create: data.items,
+              create: items,
             },
           }),
         },

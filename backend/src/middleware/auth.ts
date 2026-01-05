@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken, JwtPayload } from '../auth/jwt.js';
-import { HttpErrors } from '../utils/httpError.js';
 import { prisma } from '../db/prisma.js';
 
 /**
@@ -133,7 +132,7 @@ export function requirePermission(...allowedRoles: string[]) {
  */
 export async function optionalAuth(
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ): Promise<void> {
   try {

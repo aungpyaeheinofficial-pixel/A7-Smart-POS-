@@ -183,9 +183,10 @@ router.patch(
       }
 
       // Handle items update
-      let totalAmount = existing.totalAmount;
-      if (data.items) {
-        totalAmount = data.items.reduce(
+      const { items, ...updateData } = data;
+      let totalAmount: number = Number(existing.totalAmount);
+      if (items) {
+        totalAmount = items.reduce(
           (sum, item) => sum + item.quantity * item.unitCost,
           0
         );
@@ -194,12 +195,12 @@ router.patch(
       const purchaseOrder = await prisma.purchaseOrder.update({
         where: { id: req.params.id },
         data: {
-          ...data,
+          ...updateData,
           totalAmount,
-          ...(data.items && {
+          ...(items && {
             items: {
               deleteMany: {},
-              create: data.items,
+              create: items,
             },
           }),
         },

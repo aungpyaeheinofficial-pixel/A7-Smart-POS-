@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express, { Request, Response } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import pino from 'pino';
@@ -47,9 +47,7 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(
   pinoHttp({
     logger,
-    redact: {
-      reqHeaders: ['authorization'], // Don't log auth tokens
-    },
+    redact: ['req.headers.authorization'], // Don't log auth tokens
   })
 );
 
