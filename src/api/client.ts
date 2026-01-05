@@ -120,16 +120,53 @@ export const api = {
   },
 
   createProduct: async (product: any) => {
+    // Filter out fields that shouldn't be sent to backend
+    const { batches, id, branchId, createdAt, updatedAt, ...createData } = product;
+    
+    // Ensure price is a number
+    if (createData.price !== undefined) {
+      createData.price = Number(createData.price);
+    }
+    
+    // Ensure stockLevel and minStockLevel are integers
+    if (createData.stockLevel !== undefined) {
+      createData.stockLevel = Math.floor(Number(createData.stockLevel));
+    }
+    if (createData.minStockLevel !== undefined) {
+      createData.minStockLevel = Math.floor(Number(createData.minStockLevel));
+    }
+    
+    // Handle empty image string
+    if (createData.image === '') {
+      createData.image = undefined;
+    }
+    
     return apiRequest<any>('/products', {
       method: 'POST',
-      body: JSON.stringify(product),
+      body: JSON.stringify(createData),
     });
   },
 
   updateProduct: async (id: string, product: any) => {
+    // Filter out fields that shouldn't be sent to backend
+    const { batches, branchId, createdAt, updatedAt, ...updateData } = product;
+    
+    // Ensure price is a number
+    if (updateData.price !== undefined) {
+      updateData.price = Number(updateData.price);
+    }
+    
+    // Ensure stockLevel and minStockLevel are integers
+    if (updateData.stockLevel !== undefined) {
+      updateData.stockLevel = Math.floor(Number(updateData.stockLevel));
+    }
+    if (updateData.minStockLevel !== undefined) {
+      updateData.minStockLevel = Math.floor(Number(updateData.minStockLevel));
+    }
+    
     return apiRequest<any>(`/products/${id}`, {
       method: 'PATCH',
-      body: JSON.stringify(product),
+      body: JSON.stringify(updateData),
     });
   },
 

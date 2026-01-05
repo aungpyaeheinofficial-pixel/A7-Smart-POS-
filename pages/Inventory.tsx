@@ -136,13 +136,46 @@ const Inventory = () => {
 
     try {
       if (isEditMode && currentProduct.id) {
-        await updateProduct(currentProduct.id, currentProduct);
+        // Prepare update data - only send fields that can be updated
+        const updateData = {
+          sku: currentProduct.sku,
+          gtin: currentProduct.gtin,
+          nameEn: currentProduct.nameEn,
+          nameMm: currentProduct.nameMm,
+          genericName: currentProduct.genericName,
+          category: currentProduct.category,
+          description: currentProduct.description,
+          price: currentProduct.price,
+          image: currentProduct.image || undefined,
+          stockLevel: currentProduct.stockLevel,
+          unit: currentProduct.unit,
+          minStockLevel: currentProduct.minStockLevel,
+          location: currentProduct.location,
+          requiresPrescription: currentProduct.requiresPrescription || false,
+        };
+        
+        await updateProduct(currentProduct.id, updateData);
         setSuccessMsg("Product updated successfully");
       } else {
-        await addProduct({
-          ...currentProduct,
-          image: currentProduct.image || ''
-        } as Product);
+        // Prepare create data
+        const createData = {
+          sku: currentProduct.sku || `SKU-${Date.now()}`,
+          gtin: currentProduct.gtin,
+          nameEn: currentProduct.nameEn,
+          nameMm: currentProduct.nameMm,
+          genericName: currentProduct.genericName,
+          category: currentProduct.category || 'Uncategorized',
+          description: currentProduct.description,
+          price: currentProduct.price,
+          image: currentProduct.image || undefined,
+          stockLevel: currentProduct.stockLevel || 0,
+          unit: currentProduct.unit || 'PCS',
+          minStockLevel: currentProduct.minStockLevel || 10,
+          location: currentProduct.location,
+          requiresPrescription: currentProduct.requiresPrescription || false,
+        };
+        
+        await addProduct(createData as Product);
         setSuccessMsg("Product added successfully");
       }
       setIsModalOpen(false);
@@ -151,7 +184,8 @@ const Inventory = () => {
       const { fetchProducts } = useProductStore.getState();
       await fetchProducts();
     } catch (error) {
-      alert("Failed to save product. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : "Failed to save product. Please try again.";
+      alert(errorMessage);
       console.error("Save error:", error);
     }
   };
