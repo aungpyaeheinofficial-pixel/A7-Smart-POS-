@@ -11,6 +11,7 @@ import {
   mockDistributionOrders, mockPurchaseOrders, mockExpenses, mockPayables, mockReceivables, mockSuppliers 
 } from './data';
 import { GS1ParsedData } from './utils/gs1Parser';
+import { api, removeToken } from './src/api/client';
 
 // --- Shared Helper for Persistence ---
 const getInitialBranchId = () => {
@@ -26,6 +27,7 @@ const initialBranchId = getInitialBranchId();
 interface BranchState {
   branches: Branch[];
   currentBranchId: string;
+  fetchBranches: () => Promise<void>;
   setBranch: (id: string) => void;
   getCurrentBranch: () => Branch | undefined;
   addBranch: (branch: Branch) => void;
@@ -141,7 +143,7 @@ export const useBranchStore = create<BranchState>((set, get) => ({
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
-  login: (email: string) => void;
+  login: (email: string, password: string) => Promise<User>;
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
 }
@@ -149,11 +151,20 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   user: null, 
   isAuthenticated: false,
-  login: (email: string) => {
-    const user = mockUsers.find(u => u.email === email) || mockUsers[0];
-    set({ user, isAuthenticated: true });
+  login: async (email: string, password: string) => {
+    try {
+      const response = await api.login(email, password);
+      set({ user: response.user, isAuthenticated: true });
+      return response.user;
+    } catch (error) {
+      console.error('Login failed:', error);
+      throw error;
+    }
   },
-  logout: () => set({ user: null, isAuthenticated: false }),
+  logout: () => {
+    removeToken();
+    set({ user: null, isAuthenticated: false });
+  },
   updateUser: (updates) => set((state) => ({
     user: state.user ? { ...state.user, ...updates } : null
   })),
@@ -249,8 +260,34 @@ interface ProductState {
 }
 
 export const useProductStore = create<ProductState>((set, get) => ({
-  allProducts: mockProducts,
-  products: mockProducts.filter(p => p.branchId === initialBranchId), // Init with persisted branch
+  allProducts: [],
+  products: [],
+  
+  // Fetch products from API
+  fetchProducts: async () => {
+    try {
+      const products = await api.getProducts();
+      // Transform API response to match frontend Product type
+      const transformed = products.map((p: any) => ({
+        ...p,
+        batches: p.batches || [],
+        price: Number(p.price),
+        stockLevel: p.stockLevel || 0,
+      }));
+      const currentBranchId = useBranchStore.getState().currentBranchId;
+      set({ 
+        allProducts: transformed,
+        products: transformed.filter((p: Product) => p.branchId === currentBranchId)
+      });
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
+      // Fallback to mock data on error
+      set({ 
+        allProducts: mockProducts,
+        products: mockProducts.filter(p => p.branchId === initialBranchId)
+      });
+    }
+  },
   
   syncWithBranch: (branchId) => {
     set(state => ({
@@ -260,32 +297,62 @@ export const useProductStore = create<ProductState>((set, get) => ({
 
   setProducts: (products) => set({ products }),
   
-  addProduct: (product) => {
-    const currentBranchId = useBranchStore.getState().currentBranchId;
-    const newProduct = { ...product, branchId: currentBranchId };
-    set((state) => ({ 
-      allProducts: [newProduct, ...state.allProducts],
-      products: [newProduct, ...state.products] 
-    }));
+  addProduct: async (product) => {
+    try {
+      const newProduct = await api.createProduct(product);
+      const transformed = {
+        ...newProduct,
+        batches: newProduct.batches || [],
+        price: Number(newProduct.price),
+      };
+      set((state) => ({ 
+        allProducts: [transformed, ...state.allProducts],
+        products: [transformed, ...state.products] 
+      }));
+    } catch (error) {
+      console.error('Failed to create product:', error);
+      throw error;
+    }
   },
   
-  updateProduct: (id, updates) => set((state) => {
-    const updatedAll = state.allProducts.map((p) => (p.id === id ? { ...p, ...updates } : p));
-    const currentBranchId = useBranchStore.getState().currentBranchId;
-    return {
-      allProducts: updatedAll,
-      products: updatedAll.filter(p => p.branchId === currentBranchId)
-    };
-  }),
+  updateProduct: async (id, updates) => {
+    try {
+      const updated = await api.updateProduct(id, updates);
+      const transformed = {
+        ...updated,
+        batches: updated.batches || [],
+        price: Number(updated.price),
+      };
+      set((state) => {
+        const updatedAll = state.allProducts.map((p) => (p.id === id ? transformed : p));
+        const currentBranchId = useBranchStore.getState().currentBranchId;
+        return {
+          allProducts: updatedAll,
+          products: updatedAll.filter(p => p.branchId === currentBranchId)
+        };
+      });
+    } catch (error) {
+      console.error('Failed to update product:', error);
+      throw error;
+    }
+  },
   
-  deleteProduct: (id) => set((state) => {
-     const updatedAll = state.allProducts.filter((p) => p.id !== id);
-     const currentBranchId = useBranchStore.getState().currentBranchId;
-     return {
-        allProducts: updatedAll,
-        products: updatedAll.filter(p => p.branchId === currentBranchId)
-     };
-  }),
+  deleteProduct: async (id) => {
+    try {
+      await api.deleteProduct(id);
+      set((state) => {
+        const updatedAll = state.allProducts.filter((p) => p.id !== id);
+        const currentBranchId = useBranchStore.getState().currentBranchId;
+        return {
+          allProducts: updatedAll,
+          products: updatedAll.filter(p => p.branchId === currentBranchId)
+        };
+      });
+    } catch (error) {
+      console.error('Failed to delete product:', error);
+      throw error;
+    }
+  },
 
   // Used by Stock Entry & Scanner
   incrementStock: (id, batchNumber, quantity, unit, location, expiryDate, costPrice) => set((state) => {
@@ -524,9 +591,110 @@ export const useScannerStore = create<ScannerState>()(
     )
 );
 
-// Other stores
-export const useCustomerStore = create<any>((set) => ({ customers: mockCustomers, allCustomers: mockCustomers, syncWithBranch: () => {}, addCustomer: () => {}, updateCustomer: () => {}, deleteCustomer: () => {} }));
-export const useTransactionStore = create<any>((set) => ({ transactions: mockTransactions, allTransactions: mockTransactions, syncWithBranch: () => {}, addTransaction: () => {}, getTransactionsByDateRange: () => [] }));
+// Customer Store
+export const useCustomerStore = create<any>((set) => ({
+  customers: [],
+  allCustomers: [],
+  fetchCustomers: async () => {
+    try {
+      const customers = await api.getCustomers();
+      set({ customers, allCustomers: customers });
+    } catch (error) {
+      console.error('Failed to fetch customers:', error);
+      set({ customers: mockCustomers, allCustomers: mockCustomers });
+    }
+  },
+  syncWithBranch: (branchId: string) => {
+    set((state: any) => ({
+      customers: state.allCustomers.filter((c: Customer) => c.branchId === branchId)
+    }));
+  },
+  addCustomer: async (customer: any) => {
+    try {
+      const newCustomer = await api.createCustomer(customer);
+      set((state: any) => ({
+        customers: [newCustomer, ...state.customers],
+        allCustomers: [newCustomer, ...state.allCustomers]
+      }));
+    } catch (error) {
+      console.error('Failed to create customer:', error);
+      throw error;
+    }
+  },
+  updateCustomer: async (id: string, updates: any) => {
+    try {
+      const updated = await api.updateCustomer(id, updates);
+      set((state: any) => ({
+        customers: state.customers.map((c: Customer) => c.id === id ? updated : c),
+        allCustomers: state.allCustomers.map((c: Customer) => c.id === id ? updated : c)
+      }));
+    } catch (error) {
+      console.error('Failed to update customer:', error);
+      throw error;
+    }
+  },
+  deleteCustomer: async (id: string) => {
+    try {
+      await api.deleteCustomer(id);
+      set((state: any) => ({
+        customers: state.customers.filter((c: Customer) => c.id !== id),
+        allCustomers: state.allCustomers.filter((c: Customer) => c.id !== id)
+      }));
+    } catch (error) {
+      console.error('Failed to delete customer:', error);
+      throw error;
+    }
+  }
+}));
+
+// Transaction Store
+export const useTransactionStore = create<any>((set) => ({
+  transactions: [],
+  allTransactions: [],
+  fetchTransactions: async (params?: { type?: string; startDate?: string; endDate?: string }) => {
+    try {
+      const transactions = await api.getTransactions(params);
+      // Transform API response
+      const transformed = transactions.map((t: any) => ({
+        ...t,
+        amount: Number(t.amount),
+        date: t.date,
+      }));
+      set({ transactions: transformed, allTransactions: transformed });
+    } catch (error) {
+      console.error('Failed to fetch transactions:', error);
+      set({ transactions: mockTransactions, allTransactions: mockTransactions });
+    }
+  },
+  syncWithBranch: (branchId: string) => {
+    set((state: any) => ({
+      transactions: state.allTransactions.filter((t: Transaction) => t.branchId === branchId)
+    }));
+  },
+  addTransaction: async (transaction: any) => {
+    try {
+      const newTransaction = await api.createTransaction(transaction);
+      const transformed = {
+        ...newTransaction,
+        amount: Number(newTransaction.amount),
+      };
+      set((state: any) => ({
+        transactions: [transformed, ...state.transactions],
+        allTransactions: [transformed, ...state.allTransactions]
+      }));
+    } catch (error) {
+      console.error('Failed to create transaction:', error);
+      throw error;
+    }
+  },
+  getTransactionsByDateRange: (start: Date, end: Date) => {
+    const state = useTransactionStore.getState();
+    return state.allTransactions.filter((t: Transaction) => {
+      const date = new Date(t.date);
+      return date >= start && date <= end;
+    });
+  }
+}));
 export const useDistributionStore = create<any>((set) => ({ orders: mockDistributionOrders, allOrders: mockDistributionOrders, syncWithBranch: () => {}, addOrder: () => {}, updateOrder: () => {}, deleteOrder: () => {} }));
 export const usePurchaseStore = create<any>((set) => ({ purchaseOrders: mockPurchaseOrders, allPOs: mockPurchaseOrders, syncWithBranch: () => {}, addPO: () => {}, updatePO: () => {}, deletePO: () => {} }));
 export const useFinanceStore = create<any>((set) => ({ expenses: mockExpenses, allExpenses: mockExpenses, payables: mockPayables, allPayables: mockPayables, receivables: mockReceivables, allReceivables: mockReceivables, syncWithBranch: () => {}, addExpense: () => {}, removeExpense: () => {}, markPayablePaid: () => {}, markReceivableCollected: () => {} }));

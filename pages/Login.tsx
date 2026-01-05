@@ -1,21 +1,21 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore, useBranchStore } from '../store';
+import { useAuthStore, useBranchStore, useProductStore, useCustomerStore, useTransactionStore } from '../store';
 import { HeartPulse } from 'lucide-react';
 
 const Login = () => {
-  const [email, setEmail] = useState('admin@parami.com');
+  const [email, setEmail] = useState('admin@a7systems.com');
   const [password, setPassword] = useState('password');
   const [loading, setLoading] = useState(false);
   const { login } = useAuthStore();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      login(email);
+    try {
+      await login(email, password);
       
       // Auto-select branch if user is restricted
       const user = useAuthStore.getState().user;
@@ -23,8 +23,19 @@ const Login = () => {
           useBranchStore.getState().setBranch(user.branchId);
       }
       
+      // Fetch initial data
+      await useBranchStore.getState().fetchBranches();
+      await useProductStore.getState().fetchProducts();
+      await useCustomerStore.getState().fetchCustomers();
+      await useTransactionStore.getState().fetchTransactions();
+      
       navigate('/');
-    }, 800);
+    } catch (error) {
+      alert('Login failed. Please check your credentials.');
+      console.error('Login error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -90,7 +101,7 @@ const Login = () => {
                      type="email" 
                      value={email}
                      onChange={(e) => setEmail(e.target.value)}
-                     placeholder="admin@parami.com" 
+                     placeholder="admin@a7systems.com" 
                      className="w-full h-[52px] px-4 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 focus:outline-none transition-all font-medium text-base login-input"
                      required
                    />

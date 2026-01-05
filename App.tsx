@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { useAuthStore, useGlobalStore } from './store';
+import { useAuthStore, useGlobalStore, useBranchStore, useProductStore, useCustomerStore, useTransactionStore } from './store';
 import { Sidebar, Header } from './components/Layout';
 import ShortcutPanel from './components/ShortcutPanel';
 import Dashboard from './pages/Dashboard';
@@ -18,8 +18,12 @@ import Settings from './pages/Settings';
 import PharmacyScanner from './components/PharmacyScanner';
 
 const ProtectedLayout = () => {
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const { isSidebarOpen } = useGlobalStore();
+  const { fetchBranches } = useBranchStore();
+  const { fetchProducts } = useProductStore();
+  const { fetchCustomers } = useCustomerStore();
+  const { fetchTransactions } = useTransactionStore();
 
   // Responsive: Close sidebar on mobile by default
   useEffect(() => {
@@ -32,6 +36,16 @@ const ProtectedLayout = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Fetch data when user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      fetchBranches().catch(console.error);
+      fetchProducts().catch(console.error);
+      fetchCustomers().catch(console.error);
+      fetchTransactions().catch(console.error);
+    }
+  }, [isAuthenticated, user, fetchBranches, fetchProducts, fetchCustomers, fetchTransactions]);
 
   if (!user) {
     return <Navigate to="/login" replace />;
