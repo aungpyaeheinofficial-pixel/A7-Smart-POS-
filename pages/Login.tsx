@@ -31,7 +31,8 @@ const Login = () => {
       
       navigate('/');
     } catch (error) {
-      alert('Login failed. Please check your credentials.');
+      const errorMessage = error instanceof Error ? error.message : 'Login failed. Please check your credentials.';
+      alert(errorMessage);
       console.error('Login error:', error);
     } finally {
       setLoading(false);

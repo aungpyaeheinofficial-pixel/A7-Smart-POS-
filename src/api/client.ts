@@ -45,19 +45,51 @@ async function apiRequest<T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({
-      error: { message: 'Request failed', code: 'UNKNOWN_ERROR' },
-    }));
-    throw new Error(error.error?.message || `HTTP ${response.status}`);
+    let errorMessage = `HTTP ${response.status}`;
+    try {
+      const error = await response.json();
+      errorMessage = error.error?.message || error.message || errorMessage;
+      console.error('API Error:', {
+        url,
+        status: response.status,
+        error: error.error || error,
+      });
+    } catch (e) {
+      // If response is not JSON, try to get text
+      try {
+        const text = await response.text();
+        console.error('API Error (non-JSON):', {
+          url,
+          status: response.status,
+          text,
+        });
+        errorMessage = text || errorMessage;
+      } catch (textError) {
+        console.error('API Error (no body):', {
+          url,
+          status: response.status,
+        });
+      }
+    }
+    throw new Error(errorMessage);
   }
 
   return response.json();
+  } catch (error) {
+    // Handle network errors (CORS, connection refused, etc.)
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      console.error('Network error:', error);
+      throw new Error(`Cannot connect to API at ${API_BASE_URL}. Please check if the backend is running and CORS is configured correctly.`);
+    }
+    throw error;
+  }
 }
 
 /**
