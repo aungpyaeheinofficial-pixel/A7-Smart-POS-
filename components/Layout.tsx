@@ -142,21 +142,21 @@ export const Sidebar = () => {
              <NavItem to="/expiry" icon={Calendar} label="Expiry Center" subLabel="သက်တမ်းကုန်ဆုံးမှု" isSubItem />
           </NavGroup>
 
-          {/* Management Group */}
-          <NavGroup label="Management" icon={Building2} pathPrefixes={['/purchase', '/distribution']}>
+          {/* Management Group - HIDDEN */}
+          {/* <NavGroup label="Management" icon={Building2} pathPrefixes={['/purchase', '/distribution']}>
              <NavItem to="/purchase" icon={ShoppingBag} label="Purchasing" subLabel="အဝယ်ပိုင်း" isSubItem />
              <NavItem to="/distribution" icon={Truck} label="Distribution" subLabel="ဖြန့်ချိရေး" isSubItem />
-          </NavGroup>
+          </NavGroup> */}
 
           {/* Finance Group */}
           <NavGroup label="Finance" icon={BarChart3} pathPrefixes={['/finance']}>
              <NavItem to="/finance" icon={BarChart3} label="Financial Overview" subLabel="ငွေစာရင်း" isSubItem />
           </NavGroup>
 
-          {/* CRM Group */}
-          <NavGroup label="CRM" icon={Users} pathPrefixes={['/customers']}>
+          {/* CRM Group - HIDDEN */}
+          {/* <NavGroup label="CRM" icon={Users} pathPrefixes={['/customers']}>
              <NavItem to="/customers" icon={Users} label="Customer Directory" subLabel="ဖောက်သည်များ" isSubItem />
-          </NavGroup>
+          </NavGroup> */}
 
           {/* Tools Group */}
           <NavGroup label="Tools" icon={Wrench} pathPrefixes={['/scanner', '/settings']}>
