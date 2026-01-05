@@ -55,7 +55,13 @@ async function apiRequest<T>(
     let errorMessage = `HTTP ${response.status}`;
     try {
       const error = await response.json();
-      errorMessage = error.error?.message || error.message || errorMessage;
+      // Handle Zod validation errors with details
+      if (error.error?.code === 'VALIDATION_ERROR' && error.error?.details) {
+        const details = error.error.details.map((d: any) => `${d.path}: ${d.message}`).join(', ');
+        errorMessage = `Validation failed: ${details}`;
+      } else {
+        errorMessage = error.error?.message || error.message || errorMessage;
+      }
       console.error('API Error:', {
         url,
         status: response.status,

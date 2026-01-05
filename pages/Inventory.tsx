@@ -137,43 +137,77 @@ const Inventory = () => {
     try {
       if (isEditMode && currentProduct.id) {
         // Prepare update data - only send fields that can be updated
-        const updateData = {
-          sku: currentProduct.sku,
-          gtin: currentProduct.gtin,
-          nameEn: currentProduct.nameEn,
-          nameMm: currentProduct.nameMm,
-          genericName: currentProduct.genericName,
-          category: currentProduct.category,
-          description: currentProduct.description,
-          price: currentProduct.price,
-          image: currentProduct.image || undefined,
-          stockLevel: currentProduct.stockLevel,
-          unit: currentProduct.unit,
-          minStockLevel: currentProduct.minStockLevel,
-          location: currentProduct.location,
-          requiresPrescription: currentProduct.requiresPrescription || false,
+        // Ensure unit is just the code, not the display format
+        let unitCode = currentProduct.unit || 'PCS';
+        if (unitCode.includes('(')) {
+          // Extract code from display format like "ပုလင်း (Bottle)" -> "BOTTLE"
+          const match = unitCode.match(/\((\w+)\)/);
+          if (match) {
+            unitCode = match[1].toUpperCase();
+          }
+        }
+        
+        const updateData: any = {
+          sku: currentProduct.sku || '',
+          nameEn: currentProduct.nameEn || '',
+          category: currentProduct.category || 'Uncategorized',
+          price: Number(currentProduct.price) || 0,
+          unit: unitCode,
         };
+        
+        // Only include optional fields if they have values
+        if (currentProduct.gtin) updateData.gtin = currentProduct.gtin;
+        if (currentProduct.nameMm) updateData.nameMm = currentProduct.nameMm;
+        if (currentProduct.genericName) updateData.genericName = currentProduct.genericName;
+        if (currentProduct.description) updateData.description = currentProduct.description;
+        if (currentProduct.image && currentProduct.image.trim() !== '') {
+          updateData.image = currentProduct.image;
+        }
+        if (currentProduct.stockLevel !== undefined) {
+          updateData.stockLevel = Math.floor(Number(currentProduct.stockLevel));
+        }
+        if (currentProduct.minStockLevel !== undefined) {
+          updateData.minStockLevel = Math.floor(Number(currentProduct.minStockLevel));
+        }
+        if (currentProduct.location) updateData.location = currentProduct.location;
+        if (currentProduct.requiresPrescription !== undefined) {
+          updateData.requiresPrescription = Boolean(currentProduct.requiresPrescription);
+        }
         
         await updateProduct(currentProduct.id, updateData);
         setSuccessMsg("Product updated successfully");
       } else {
         // Prepare create data
-        const createData = {
+        // Ensure unit is just the code, not the display format
+        let unitCode = currentProduct.unit || 'PCS';
+        if (unitCode.includes('(')) {
+          // Extract code from display format like "ပုလင်း (Bottle)" -> "BOTTLE"
+          const match = unitCode.match(/\((\w+)\)/);
+          if (match) {
+            unitCode = match[1].toUpperCase();
+          }
+        }
+        
+        const createData: any = {
           sku: currentProduct.sku || `SKU-${Date.now()}`,
-          gtin: currentProduct.gtin,
-          nameEn: currentProduct.nameEn,
-          nameMm: currentProduct.nameMm,
-          genericName: currentProduct.genericName,
+          nameEn: currentProduct.nameEn || '',
           category: currentProduct.category || 'Uncategorized',
-          description: currentProduct.description,
-          price: currentProduct.price,
-          image: currentProduct.image || undefined,
-          stockLevel: currentProduct.stockLevel || 0,
-          unit: currentProduct.unit || 'PCS',
-          minStockLevel: currentProduct.minStockLevel || 10,
-          location: currentProduct.location,
-          requiresPrescription: currentProduct.requiresPrescription || false,
+          price: Number(currentProduct.price) || 0,
+          unit: unitCode,
+          stockLevel: Math.floor(Number(currentProduct.stockLevel)) || 0,
+          minStockLevel: Math.floor(Number(currentProduct.minStockLevel)) || 10,
+          requiresPrescription: Boolean(currentProduct.requiresPrescription) || false,
         };
+        
+        // Only include optional fields if they have values
+        if (currentProduct.gtin) createData.gtin = currentProduct.gtin;
+        if (currentProduct.nameMm) createData.nameMm = currentProduct.nameMm;
+        if (currentProduct.genericName) createData.genericName = currentProduct.genericName;
+        if (currentProduct.description) createData.description = currentProduct.description;
+        if (currentProduct.image && currentProduct.image.trim() !== '') {
+          createData.image = currentProduct.image;
+        }
+        if (currentProduct.location) createData.location = currentProduct.location;
         
         await addProduct(createData as Product);
         setSuccessMsg("Product added successfully");
