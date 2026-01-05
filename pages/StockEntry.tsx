@@ -248,54 +248,78 @@ const StockEntry = () => {
 
     setIsSaving(true);
     
-    // Process sequentially
-    for (const entry of gridData) {
-      if (!entry.productName) continue; // Skip empty rows
+    try {
+      // Process sequentially
+      for (const entry of gridData) {
+        if (!entry.productName) continue; // Skip empty rows
 
-      const existing = allProducts.find(p => p.gtin === entry.gtin || p.nameEn === entry.productName);
-      
-      if (existing) {
-         incrementStock(
-            existing.id,
-            entry.batchNumber || 'DEFAULT',
-            entry.quantity,
-            entry.unit,
-            entry.location,
-            entry.expiryDate,
-            entry.costPrice
-         );
-      } else {
-         // Create new product
-         addProduct({
-            id: `p-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-            gtin: entry.gtin,
-            sku: entry.gtin || `SKU-${Date.now()}`,
-            nameEn: entry.productName,
-            nameMm: entry.productName,
-            category: entry.category || 'Uncategorized',
-            price: entry.sellingPrice,
-            stockLevel: entry.quantity,
-            unit: entry.unit,
-            minStockLevel: 10,
-            requiresPrescription: false,
-            branchId: user?.branchId || 'b1',
-            location: entry.location,
-            image: '',
-            batches: [{
-               id: `b-${Date.now()}-${Math.random()}`,
-               batchNumber: entry.batchNumber || 'DEFAULT',
-               expiryDate: entry.expiryDate || new Date(Date.now() + 31536000000).toISOString().split('T')[0],
-               quantity: entry.quantity,
-               costPrice: entry.costPrice
-            }]
-         });
+        const existing = allProducts.find(p => p.gtin === entry.gtin || p.nameEn === entry.productName);
+        
+        if (existing) {
+           // Add stock via batch API
+           await incrementStock(
+              existing.id,
+              entry.batchNumber || 'DEFAULT',
+              entry.quantity,
+              entry.unit,
+              entry.location,
+              entry.expiryDate,
+              entry.costPrice
+           );
+        } else {
+           // Create new product
+           await addProduct({
+              id: `p-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+              gtin: entry.gtin,
+              sku: entry.gtin || `SKU-${Date.now()}`,
+              nameEn: entry.productName,
+              nameMm: entry.productName,
+              category: entry.category || 'Uncategorized',
+              price: entry.sellingPrice,
+              stockLevel: entry.quantity,
+              unit: entry.unit,
+              minStockLevel: 10,
+              requiresPrescription: false,
+              branchId: user?.branchId || 'b1',
+              location: entry.location,
+              image: '',
+              batches: [{
+                 id: `b-${Date.now()}-${Math.random()}`,
+                 batchNumber: entry.batchNumber || 'DEFAULT',
+                 expiryDate: entry.expiryDate || new Date(Date.now() + 31536000000).toISOString().split('T')[0],
+                 quantity: entry.quantity,
+                 costPrice: entry.costPrice
+              }]
+           });
+           
+           // If product was created, add the batch separately
+           const newProduct = allProducts.find(p => p.gtin === entry.gtin || p.nameEn === entry.productName);
+           if (newProduct && entry.batchNumber && entry.batchNumber !== 'DEFAULT') {
+             await incrementStock(
+               newProduct.id,
+               entry.batchNumber,
+               entry.quantity,
+               entry.unit,
+               entry.location,
+               entry.expiryDate,
+               entry.costPrice
+             );
+           }
+        }
       }
-    }
 
-    await new Promise(r => setTimeout(r, 800)); // Simulate delay
-    setIsSaving(false);
-    setGridData([]);
-    navigate('/inventory');
+      // Refresh products to get updated data
+      const { fetchProducts } = useProductStore.getState();
+      await fetchProducts();
+      
+      setIsSaving(false);
+      setGridData([]);
+      navigate('/inventory');
+    } catch (error) {
+      setIsSaving(false);
+      alert('Failed to save some items. Please check and try again.');
+      console.error('Save error:', error);
+    }
   };
 
   // --- Header Stats ---

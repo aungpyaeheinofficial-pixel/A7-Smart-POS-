@@ -258,12 +258,13 @@ export const useGlobalStore = create<GlobalState>((set) => ({
 interface ProductState {
   allProducts: Product[]; // Master DB
   products: Product[];    // Filtered View
+  fetchProducts: () => Promise<void>;
   syncWithBranch: (branchId: string) => void;
   setProducts: (products: Product[]) => void;
-  addProduct: (product: Product) => void;
-  updateProduct: (id: string, updates: Partial<Product>) => void;
-  deleteProduct: (id: string) => void;
-  incrementStock: (id: string, batchNumber: string | null, quantity: number, unit?: string, location?: string, expiryDate?: string, costPrice?: number) => void;
+  addProduct: (product: Product) => Promise<void>;
+  updateProduct: (id: string, updates: Partial<Product>) => Promise<void>;
+  deleteProduct: (id: string) => Promise<void>;
+  incrementStock: (id: string, batchNumber: string | null, quantity: number, unit?: string, location?: string, expiryDate?: string, costPrice?: number) => Promise<void>;
   removeBatchStock: (productId: string, batchNumber: string, quantity: number, reason?: string) => void;
 }
 
@@ -362,8 +363,29 @@ export const useProductStore = create<ProductState>((set, get) => ({
     }
   },
 
-  // Used by Stock Entry & Scanner
-  incrementStock: (id, batchNumber, quantity, unit, location, expiryDate, costPrice) => set((state) => {
+  // Used by Stock Entry & Scanner - Now saves to database
+  incrementStock: async (id, batchNumber, quantity, unit, location, expiryDate, costPrice) => {
+    try {
+      // Create or update batch via API
+      const batchData = {
+        batchNumber: batchNumber || 'DEFAULT',
+        expiryDate: expiryDate || new Date(Date.now() + 31536000000).toISOString().split('T')[0],
+        quantity: quantity,
+        costPrice: costPrice || 0,
+      };
+      
+      await api.createBatch(id, batchData);
+      
+      // Refresh products to get updated stock levels
+      await get().fetchProducts();
+    } catch (error) {
+      console.error('Failed to increment stock:', error);
+      throw error;
+    }
+  },
+  
+  // Legacy local-only increment (kept for backward compatibility, but should use async version)
+  _incrementStockLocal: (id, batchNumber, quantity, unit, location, expiryDate, costPrice) => set((state) => {
     const currentBranchId = useBranchStore.getState().currentBranchId;
     
     const updatedAll = state.allProducts.map(p => {

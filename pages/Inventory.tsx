@@ -106,36 +106,54 @@ const Inventory = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!itemToDelete) return;
     setIsDeleting(true);
-    setTimeout(() => {
-      deleteProduct(itemToDelete.id);
+    try {
+      await deleteProduct(itemToDelete.id);
       setIsDeleting(false);
       setIsDeleteModalOpen(false);
       setIsModalOpen(false);
       setItemToDelete(null);
       setSuccessMsg("Inventory item deleted successfully");
       setTimeout(() => setSuccessMsg(""), 3000);
-    }, 1000);
+      // Refresh products list
+      const { fetchProducts } = useProductStore.getState();
+      await fetchProducts();
+    } catch (error) {
+      setIsDeleting(false);
+      alert("Failed to delete product. Please try again.");
+      console.error("Delete error:", error);
+    }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentProduct.nameEn || !currentProduct.price) {
       alert("Please fill in required fields");
       return;
     }
 
-    if (isEditMode && currentProduct.id) {
-      updateProduct(currentProduct.id, currentProduct);
-    } else {
-      addProduct({
-        ...currentProduct,
-        image: currentProduct.image || ''
-      } as Product);
+    try {
+      if (isEditMode && currentProduct.id) {
+        await updateProduct(currentProduct.id, currentProduct);
+        setSuccessMsg("Product updated successfully");
+      } else {
+        await addProduct({
+          ...currentProduct,
+          image: currentProduct.image || ''
+        } as Product);
+        setSuccessMsg("Product added successfully");
+      }
+      setIsModalOpen(false);
+      setTimeout(() => setSuccessMsg(""), 3000);
+      // Refresh products list
+      const { fetchProducts } = useProductStore.getState();
+      await fetchProducts();
+    } catch (error) {
+      alert("Failed to save product. Please try again.");
+      console.error("Save error:", error);
     }
-    setIsModalOpen(false);
   };
 
   const handleInputChange = (field: keyof Product, value: any) => {

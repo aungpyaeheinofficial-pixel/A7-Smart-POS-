@@ -258,7 +258,7 @@ const POS = () => {
       }
   };
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     const totalAmount = total();
     const newTransaction: Transaction = {
       id: `TRX-${Date.now()}`,
@@ -271,11 +271,18 @@ const POS = () => {
       branchId: currentBranchId,
     };
     
-    addTransaction(newTransaction);
-    setPaymentModalOpen(false);
-    clearCart();
-    setSuccessMsg('Transaction Completed Successfully!');
-    setTimeout(() => setSuccessMsg(''), 3000);
+    try {
+      await addTransaction(newTransaction);
+      setPaymentModalOpen(false);
+      clearCart();
+      setSuccessMsg('Transaction Completed Successfully!');
+      setTimeout(() => setSuccessMsg(''), 3000);
+      // Refresh transactions to update finance reports
+      await useTransactionStore.getState().fetchTransactions();
+    } catch (error) {
+      alert('Failed to save transaction. Please try again.');
+      console.error('Checkout error:', error);
+    }
   };
 
   return (

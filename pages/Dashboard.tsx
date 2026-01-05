@@ -371,8 +371,13 @@ const Dashboard = () => {
   // Connect to Real Stores
   const { products } = useProductStore();
   const { customers } = useCustomerStore();
-  const { transactions } = useTransactionStore();
+  const { transactions, fetchTransactions } = useTransactionStore();
   const { orders } = useDistributionStore();
+  
+  // Fetch transactions on mount and when filter changes
+  useEffect(() => {
+    fetchTransactions().catch(console.error);
+  }, [fetchTransactions]);
 
   const [filterType, setFilterType] = useState<'Today' | 'Week' | 'Month' | 'Year' | 'Custom'>('Month');
   const [loading, setLoading] = useState(false);
