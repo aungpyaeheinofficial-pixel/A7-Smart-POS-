@@ -14,8 +14,9 @@ async function start() {
     logger.info('Database connected successfully');
 
     // Start HTTP server
-    const server = app.listen(env.PORT, () => {
-      logger.info(`Server running on port ${env.PORT}`);
+    // Listen on 0.0.0.0 to accept connections from all network interfaces
+    const server = app.listen(env.PORT, '0.0.0.0', () => {
+      logger.info(`Server running on http://0.0.0.0:${env.PORT}`);
       logger.info(`Environment: ${env.NODE_ENV}`);
       logger.info(`CORS origin: ${env.CORS_ORIGIN}`);
     });
