@@ -15,7 +15,8 @@
     "recharts": "^2.12.2",
     "zustand": "^4.5.2",
     "clsx": "^2.1.0",
-    "tailwind-merge": "^2.2.1"
+    "tailwind-merge": "^2.2.1",
+    "date-fns": "^3.6.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.64",
