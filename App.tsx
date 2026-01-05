@@ -40,12 +40,15 @@ const ProtectedLayout = () => {
   // Fetch data when user is authenticated
   useEffect(() => {
     if (isAuthenticated && user) {
-      fetchBranches().catch(console.error);
-      fetchProducts().catch(console.error);
-      fetchCustomers().catch(console.error);
-      fetchTransactions().catch(console.error);
+      // Use setTimeout to avoid blocking render
+      setTimeout(() => {
+        fetchBranches().catch(console.error);
+        fetchProducts().catch(console.error);
+        fetchCustomers().catch(console.error);
+        fetchTransactions().catch(console.error);
+      }, 100);
     }
-  }, [isAuthenticated, user, fetchBranches, fetchProducts, fetchCustomers, fetchTransactions]);
+  }, [isAuthenticated, user]);
 
   if (!user) {
     return <Navigate to="/login" replace />;

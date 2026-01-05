@@ -11,7 +11,7 @@ import {
   mockDistributionOrders, mockPurchaseOrders, mockExpenses, mockPayables, mockReceivables, mockSuppliers 
 } from './data';
 import { GS1ParsedData } from './utils/gs1Parser';
-import { api, removeToken } from './src/api/client';
+import { api, removeToken } from './src/api/client.js';
 
 // --- Shared Helper for Persistence ---
 const getInitialBranchId = () => {

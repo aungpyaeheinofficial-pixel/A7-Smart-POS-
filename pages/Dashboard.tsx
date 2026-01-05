@@ -377,12 +377,7 @@ const Dashboard = () => {
   // Fetch transactions on mount
   useEffect(() => {
     fetchTransactions().catch(console.error);
-  }, [fetchTransactions]);
-  
-  // Refresh transactions when filter changes to get updated data
-  useEffect(() => {
-    fetchTransactions().catch(console.error);
-  }, [filterType, customRange, fetchTransactions]);
+  }, []);
 
   const [filterType, setFilterType] = useState<'Today' | 'Week' | 'Month' | 'Year' | 'Custom'>('Month');
   const [loading, setLoading] = useState(false);
