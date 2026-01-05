@@ -259,20 +259,29 @@ const POS = () => {
   };
 
   const handleCheckout = async () => {
+    if (items.length === 0) {
+      alert('Cart is empty');
+      return;
+    }
+    
     const totalAmount = total();
-    const newTransaction: Transaction = {
-      id: `TRX-${Date.now()}`,
-      type: 'INCOME',
+    if (totalAmount <= 0) {
+      alert('Total amount must be greater than 0');
+      return;
+    }
+    
+    // Prepare transaction data for API (backend will set branchId and userId)
+    const transactionData = {
+      type: 'INCOME' as const,
       category: 'Sales',
       amount: totalAmount,
-      date: new Date().toISOString().split('T')[0],
-      description: `POS Sale - ${items.length} items`,
+      date: new Date().toISOString().split('T')[0], // ISO date string
+      description: `POS Sale - ${items.length} items${customer ? ` - Customer: ${customer.name}` : ''}`,
       paymentMethod: selectedPaymentMethod,
-      branchId: currentBranchId,
     };
     
     try {
-      await addTransaction(newTransaction);
+      await addTransaction(transactionData);
       setPaymentModalOpen(false);
       clearCart();
       setSuccessMsg('Transaction Completed Successfully!');
@@ -280,7 +289,8 @@ const POS = () => {
       // Refresh transactions to update finance reports
       await useTransactionStore.getState().fetchTransactions();
     } catch (error) {
-      alert('Failed to save transaction. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save transaction. Please try again.';
+      alert(errorMessage);
       console.error('Checkout error:', error);
     }
   };

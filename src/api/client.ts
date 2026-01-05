@@ -243,9 +243,27 @@ export const api = {
   },
 
   createTransaction: async (transaction: any) => {
+    // Filter out fields that backend doesn't accept
+    const { id, branchId, ...transactionData } = transaction;
+    
+    // Ensure amount is a number
+    if (transactionData.amount !== undefined) {
+      transactionData.amount = Number(transactionData.amount);
+    }
+    
+    // Ensure date is in correct format (ISO string)
+    if (transactionData.date) {
+      // If it's already an ISO string, use it; otherwise convert
+      if (typeof transactionData.date === 'string') {
+        transactionData.date = transactionData.date;
+      } else if (transactionData.date instanceof Date) {
+        transactionData.date = transactionData.date.toISOString().split('T')[0];
+      }
+    }
+    
     return apiRequest<any>('/transactions', {
       method: 'POST',
-      body: JSON.stringify(transaction),
+      body: JSON.stringify(transactionData),
     });
   },
 

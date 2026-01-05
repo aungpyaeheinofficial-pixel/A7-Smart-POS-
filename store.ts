@@ -367,11 +367,22 @@ export const useProductStore = create<ProductState>((set, get) => ({
   incrementStock: async (id, batchNumber, quantity, unit, location, expiryDate, costPrice) => {
     try {
       // Create or update batch via API
+      // Backend expects date as ISO string or Date object
+      let expiryDateValue: string;
+      if (expiryDate) {
+        expiryDateValue = expiryDate;
+      } else {
+        // Default to 1 year from now
+        const defaultDate = new Date();
+        defaultDate.setFullYear(defaultDate.getFullYear() + 1);
+        expiryDateValue = defaultDate.toISOString().split('T')[0];
+      }
+      
       const batchData = {
         batchNumber: batchNumber || 'DEFAULT',
-        expiryDate: expiryDate || new Date(Date.now() + 31536000000).toISOString().split('T')[0],
-        quantity: quantity,
-        costPrice: costPrice || 0,
+        expiryDate: expiryDateValue,
+        quantity: Math.floor(Number(quantity)) || 0,
+        costPrice: Number(costPrice) || 0,
       };
       
       await api.createBatch(id, batchData);
