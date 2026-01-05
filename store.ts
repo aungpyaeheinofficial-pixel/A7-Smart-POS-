@@ -36,29 +36,37 @@ interface BranchState {
 }
 
 export const useBranchStore = create<BranchState>((set, get) => ({
-  branches: [
-    { 
-      id: 'b1', 
-      name: 'Main Store', 
-      code: 'main-01', 
-      address: 'No. 45, Arzarni Road, Dawei', 
-      phone: '09-420012345',
-      managerName: 'U Mg Mg',
-      email: 'branch1@a7systems.com',
-      status: 'active' 
-    }, 
-    { 
-      id: 'b2', 
-      name: 'Branch (2) Yangon', 
-      code: 'ygn-02', 
-      address: 'No. 12, Pyay Road, Yangon',
-      phone: '09-420098765', 
-      managerName: 'Daw Hla',
-      email: 'branch2@a7systems.com',
-      status: 'active'
-    } 
-  ],
+  branches: [],
   currentBranchId: initialBranchId,
+  
+  // Fetch branches from API
+  fetchBranches: async () => {
+    try {
+      const branches = await api.getBranches();
+      set({ branches });
+      // If no current branch set, use first branch
+      if (!get().currentBranchId && branches.length > 0) {
+        set({ currentBranchId: branches[0].id });
+      }
+    } catch (error) {
+      console.error('Failed to fetch branches:', error);
+      // Fallback to mock branches
+      set({ 
+        branches: [
+          { 
+            id: 'b1', 
+            name: 'Main Store', 
+            code: 'main-01', 
+            address: 'No. 45, Arzarni Road, Dawei', 
+            phone: '09-420012345',
+            managerName: 'U Mg Mg',
+            email: 'branch1@a7systems.com',
+            status: 'active' 
+          }
+        ]
+      });
+    }
+  },
   
   setBranch: (id: string) => {
     localStorage.setItem('currentBranchId', id);
