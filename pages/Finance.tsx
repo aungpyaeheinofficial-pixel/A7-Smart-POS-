@@ -2,19 +2,45 @@
 import React, { useState, useMemo } from 'react';
 import { Card, Button, Input, Badge } from '../components/UI';
 import { useFinanceStore, useTransactionStore } from '../store';
-import { 
-  ArrowUpRight, ArrowDownRight, DollarSign, TrendingUp, Calendar, 
-  CreditCard, Wallet, Plus, CheckCircle2, 
-  Trash2, X, Search, FileText, Filter, Check
+import {
+  ArrowUpRight, ArrowDownRight, DollarSign, TrendingUp,
+  Wallet, Plus, Trash2, X, Search, FileText, Check, Download
 } from 'lucide-react';
-import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart as RePieChart, Pie, Cell, Legend 
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart as RePieChart, Pie, Cell, Legend
 } from 'recharts';
 import { Expense, Transaction } from '../types';
-import * as XLSX from 'xlsx';
 
 const CHART_COLORS = ['#0060CE', '#D7000F', '#10B981', '#F59E0B'];
+
+// ─── Zero-dependency CSV Export (opens in Excel) ────────────────────────────
+const exportTransactionsToCSV = (transactions: Transaction[], filter: string) => {
+  const filtered = transactions.filter(t =>
+    filter === 'ALL' ? true : t.type === filter
+  );
+
+  const headers = ['Transaction ID', 'Date', 'Type', 'Category', 'Description', 'Payment Method', 'Amount (MMK)'];
+  const rows = filtered.map(t => [
+    t.id,
+    t.date,
+    t.type,
+    t.category,
+    `"${t.description.replace(/"/g, '""')}"`,
+    t.paymentMethod || '-',
+    t.amount
+  ]);
+
+  const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const label = filter === 'ALL' ? 'All' : filter === 'INCOME' ? 'Income' : 'Expense';
+  a.href = url;
+  a.download = `Transactions_${label}_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
 
 // ─── Currency Display Toggle ────────────────────────────────────────────────
 type CurrencyMode = 'MMK' | 'M';
@@ -32,11 +58,10 @@ const CurrencyToggle = ({ mode, onChange }: { mode: CurrencyMode; onChange: (m: 
       <button
         key={m}
         onClick={() => onChange(m)}
-        className={`px-3 py-1 text-xs font-semibold rounded-md transition-all duration-200 ${
-          mode === m
-            ? 'bg-white text-slate-800 shadow-sm'
-            : 'text-slate-500 hover:text-slate-700'
-        }`}
+        className={`px-3 py-1 text-xs font-semibold rounded-md transition-all duration-200 ${mode === m
+          ? 'bg-white text-slate-800 shadow-sm'
+          : 'text-slate-500 hover:text-slate-700'
+          }`}
       >
         {m === 'MMK' ? 'Ks / MMK' : 'M (Million)'}
       </button>
@@ -64,9 +89,9 @@ const KPICard = ({ title, value, subValue, icon: Icon, type = 'neutral', onClick
   const isGrowthNegative = subValue?.includes('-');
 
   return (
-    <div 
-        onClick={onClick}
-        className={`p-5 rounded-xl border shadow-sm ${styles[type]} transition-all hover:shadow-md cursor-pointer relative overflow-hidden ${isActive ? 'ring-2 ring-offset-2 ring-a7/50' : ''}`}
+    <div
+      onClick={onClick}
+      className={`p-5 rounded-xl border shadow-sm ${styles[type]} transition-all hover:shadow-md cursor-pointer relative overflow-hidden ${isActive ? 'ring-2 ring-offset-2 ring-a7/50' : ''}`}
     >
       <div className="flex justify-between items-start mb-4">
         <div>
@@ -85,38 +110,7 @@ const KPICard = ({ title, value, subValue, icon: Icon, type = 'neutral', onClick
   );
 };
 
-// ─── Export Helper ────────────────────────────────────────────────────────────
-const exportTransactionsToExcel = (transactions: Transaction[], filter: string) => {
-  const filtered = transactions.filter(t => {
-    if (filter === 'ALL') return true;
-    return t.type === filter;
-  });
 
-  const rows = filtered.map(t => ({
-    'Transaction ID': t.id,
-    'Date': t.date,
-    'Type': t.type,
-    'Category': t.category,
-    'Description': t.description,
-    'Payment Method': t.paymentMethod || '—',
-    'Amount (MMK)': t.amount,
-  }));
-
-  const ws = XLSX.utils.json_to_sheet(rows);
-
-  // Column widths
-  ws['!cols'] = [
-    { wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 16 },
-    { wch: 30 }, { wch: 16 }, { wch: 16 },
-  ];
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Transactions');
-
-  const label = filter === 'ALL' ? 'All' : filter === 'INCOME' ? 'Income' : 'Expense';
-  const filename = `Transactions_${label}_${new Date().toISOString().split('T')[0]}.xlsx`;
-  XLSX.writeFile(wb, filename);
-};
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const Finance = () => {
@@ -134,9 +128,9 @@ const Finance = () => {
   });
 
   const handleAddExpense = () => {
-    if(!newExpense.amount || !newExpense.description) return;
-    addExpense({ 
-      ...newExpense, 
+    if (!newExpense.amount || !newExpense.description) return;
+    addExpense({
+      ...newExpense,
       id: `ex-${Date.now()}`,
       branchId: ''
     } as Expense);
@@ -223,12 +217,11 @@ const Finance = () => {
           {['overview', 'transactions', 'expenses', 'payables', 'receivables'].map((tab) => (
             <button
               key={tab}
-              onClick={() => { setActiveTab(tab as any); if(tab==='transactions') setTransactionFilter('ALL'); }}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md capitalize transition-all whitespace-nowrap ${
-                activeTab === tab 
-                  ? 'bg-slate-800 text-white shadow-sm' 
-                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
-              }`}
+              onClick={() => { setActiveTab(tab as any); if (tab === 'transactions') setTransactionFilter('ALL'); }}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md capitalize transition-all whitespace-nowrap ${activeTab === tab
+                ? 'bg-slate-800 text-white shadow-sm'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                }`}
             >
               {tab}
             </button>
@@ -250,48 +243,48 @@ const Finance = () => {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <KPICard 
-            title="Total Revenue" 
+          <KPICard
+            title="Total Revenue"
             value={formatCurrency(stats.totalRevenue, currencyMode)}
-            subValue={`${Number(stats.revenueGrowth) >= 0 ? '+' : ''}${stats.revenueGrowth}% vs last mo`} 
-            icon={DollarSign} 
+            subValue={`${Number(stats.revenueGrowth) >= 0 ? '+' : ''}${stats.revenueGrowth}% vs last mo`}
+            icon={DollarSign}
             type="positive"
             isActive={activeTab === 'transactions' && transactionFilter === 'INCOME'}
             onClick={handleRevenueClick}
           />
-          <KPICard 
-            title="Total Expenses" 
+          <KPICard
+            title="Total Expenses"
             value={formatCurrency(stats.totalExpenses, currencyMode)}
-            subValue={`${Number(stats.expenseGrowth) >= 0 ? '+' : ''}${stats.expenseGrowth}% vs last mo`} 
-            icon={Wallet} 
-            type="negative" 
+            subValue={`${Number(stats.expenseGrowth) >= 0 ? '+' : ''}${stats.expenseGrowth}% vs last mo`}
+            icon={Wallet}
+            type="negative"
             isActive={activeTab === 'expenses'}
             onClick={handleExpenseClick}
           />
-          <KPICard 
-            title="Net Profit" 
+          <KPICard
+            title="Net Profit"
             value={formatCurrency(stats.netProfit, currencyMode)}
-            subValue={`${stats.margin}% Margin`} 
-            icon={TrendingUp} 
-            type="highlight" 
+            subValue={`${stats.margin}% Margin`}
+            icon={TrendingUp}
+            type="highlight"
             isActive={activeTab === 'overview'}
             onClick={handleProfitClick}
           />
-          <KPICard 
-            title="Accounts Payable" 
+          <KPICard
+            title="Accounts Payable"
             value={formatCurrency(payables.reduce((acc, p) => acc + p.amount, 0), currencyMode)}
-            subValue={`${payables.length} Invoices`} 
-            icon={ArrowDownRight} 
-            type="neutral" 
+            subValue={`${payables.length} Invoices`}
+            icon={ArrowDownRight}
+            type="neutral"
             isActive={activeTab === 'payables'}
             onClick={handlePayableClick}
           />
-          <KPICard 
-            title="Accounts Receivable" 
+          <KPICard
+            title="Accounts Receivable"
             value={formatCurrency(receivables.reduce((acc, r) => acc + r.amount, 0), currencyMode)}
-            subValue={`${receivables.length} Pending`} 
-            icon={ArrowUpRight} 
-            type="neutral" 
+            subValue={`${receivables.length} Pending`}
+            icon={ArrowUpRight}
+            type="neutral"
             isActive={activeTab === 'receivables'}
             onClick={handleReceivableClick}
           />
@@ -308,18 +301,18 @@ const Finance = () => {
                 <AreaChart data={cashFlowData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.1} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.1} />
+                      <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} tickFormatter={(val) => `${val/1000000}M`} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(val) => `${val / 1000000}M`} />
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <Tooltip 
+                  <Tooltip
                     formatter={(val: number) => [`${val.toLocaleString()} MMK`, '']}
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   />
@@ -364,40 +357,40 @@ const Finance = () => {
           <div className="p-4 bg-slate-50/50 border-b border-slate-200 flex flex-col md:flex-row gap-4 justify-between items-center">
             <div className="flex items-center gap-2">
               {(['ALL', 'INCOME', 'EXPENSE'] as const).map((f) => (
-                <button 
+                <button
                   key={f}
                   onClick={() => setTransactionFilter(f)}
-                  className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                    transactionFilter === f 
-                      ? f === 'ALL' ? 'bg-slate-800 text-white border-slate-800'
-                        : f === 'INCOME' ? 'bg-emerald-600 text-white border-emerald-600'
+                  className={`px-3 py-1 text-xs rounded-full border transition-colors ${transactionFilter === f
+                    ? f === 'ALL' ? 'bg-slate-800 text-white border-slate-800'
+                      : f === 'INCOME' ? 'bg-emerald-600 text-white border-emerald-600'
                         : 'bg-rose-600 text-white border-rose-600'
-                      : 'bg-white border-slate-200 hover:bg-slate-50'
-                  }`}
+                    : 'bg-white border-slate-200 hover:bg-slate-50'
+                    }`}
                 >
                   {f === 'ALL' ? 'All' : f === 'INCOME' ? 'Income' : 'Expense'}
                 </button>
               ))}
             </div>
-            
+
             <div className="flex gap-2 w-full md:w-auto">
               <div className="relative flex-1 md:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                <input 
-                  type="text" 
-                  placeholder="Search transactions..." 
+                <input
+                  type="text"
+                  placeholder="Search transactions..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-a7" 
+                  className="w-full pl-9 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-a7"
                 />
               </div>
               {/* ✅ WORKING EXPORT BUTTON */}
               <button
-                onClick={() => exportTransactionsToExcel(transactions, transactionFilter)}
+                onClick={() => exportTransactionsToCSV(transactions, transactionFilter)}
                 className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm transition-all duration-200 active:scale-95"
+                title="Download as CSV (opens in Excel)"
               >
-                <FileText size={14} />
-                Export Excel
+                <Download size={14} />
+                Export
               </button>
             </div>
           </div>
@@ -439,8 +432,8 @@ const Finance = () => {
 
       {/* ─── EXPENSES TAB ─── */}
       {activeTab === 'expenses' && (
-        <Card 
-          title="Operational Expenses" 
+        <Card
+          title="Operational Expenses"
           className="animate-in slide-in-from-right-4 duration-300"
           action={<Button variant="primary" onClick={() => setIsExpenseModalOpen(true)}><Plus size={16} /> Add Expense</Button>}
         >
@@ -507,7 +500,7 @@ const Finance = () => {
                     </td>
                     <td className="px-6 py-4 text-right font-bold text-slate-800">{p.amount.toLocaleString()} <span className="text-xs font-normal text-slate-400">MMK</span></td>
                     <td className="px-6 py-4 text-center">
-                      <button 
+                      <button
                         onClick={() => markPayablePaid(p.id)}
                         className="bg-emerald-50 text-emerald-600 hover:bg-emerald-100 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 mx-auto transition-colors"
                       >
@@ -551,7 +544,7 @@ const Finance = () => {
                     </td>
                     <td className="px-6 py-4 text-right font-bold text-slate-800">{r.amount.toLocaleString()} <span className="text-xs font-normal text-slate-400">MMK</span></td>
                     <td className="px-6 py-4 text-center">
-                      <button 
+                      <button
                         onClick={() => markReceivableCollected(r.id)}
                         className="bg-a7/10 text-a7 hover:bg-a7/20 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 mx-auto transition-colors"
                       >
@@ -580,19 +573,19 @@ const Finance = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Description</label>
-                <Input value={newExpense.description} onChange={(e: any) => setNewExpense({...newExpense, description: e.target.value})} placeholder="e.g. Shop Rent" />
+                <Input value={newExpense.description} onChange={(e: any) => setNewExpense({ ...newExpense, description: e.target.value })} placeholder="e.g. Shop Rent" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Amount (MMK)</label>
-                  <Input type="number" value={newExpense.amount} onChange={(e: any) => setNewExpense({...newExpense, amount: parseInt(e.target.value) || 0})} />
+                  <Input type="number" value={newExpense.amount} onChange={(e: any) => setNewExpense({ ...newExpense, amount: parseInt(e.target.value) || 0 })} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Category</label>
-                  <select 
+                  <select
                     className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg"
                     value={newExpense.category}
-                    onChange={(e) => setNewExpense({...newExpense, category: e.target.value})}
+                    onChange={(e) => setNewExpense({ ...newExpense, category: e.target.value })}
                   >
                     <option>Utilities</option>
                     <option>Rent</option>
@@ -604,17 +597,17 @@ const Finance = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Date</label>
-                <Input type="date" value={newExpense.date} onChange={(e: any) => setNewExpense({...newExpense, date: e.target.value})} />
+                <Input type="date" value={newExpense.date} onChange={(e: any) => setNewExpense({ ...newExpense, date: e.target.value })} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Status</label>
                 <div className="flex gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" checked={newExpense.status === 'PAID'} onChange={() => setNewExpense({...newExpense, status: 'PAID'})} />
+                    <input type="radio" checked={newExpense.status === 'PAID'} onChange={() => setNewExpense({ ...newExpense, status: 'PAID' })} />
                     <span>Paid</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" checked={newExpense.status === 'PENDING'} onChange={() => setNewExpense({...newExpense, status: 'PENDING'})} />
+                    <input type="radio" checked={newExpense.status === 'PENDING'} onChange={() => setNewExpense({ ...newExpense, status: 'PENDING' })} />
                     <span>Pending</span>
                   </label>
                 </div>
