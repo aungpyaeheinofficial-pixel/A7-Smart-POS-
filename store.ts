@@ -1,14 +1,14 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { 
-  CartItem, Product, User, Role, Transaction, Customer, Branch, 
+import {
+  CartItem, Product, User, Role, Transaction, Customer, Branch,
   DistributionOrder, PurchaseOrder, Expense, Payable, Receivable, Supplier, AppSettings,
   ScannedItem, SyncLog, SyncStatus, UNIT_TYPES
 } from './types';
-import { 
-  mockProducts, mockUsers, mockTransactions, mockCustomers, 
-  mockDistributionOrders, mockPurchaseOrders, mockExpenses, mockPayables, mockReceivables, mockSuppliers 
+import {
+  mockProducts, mockUsers, mockTransactions, mockCustomers,
+  mockDistributionOrders, mockPurchaseOrders, mockExpenses, mockPayables, mockReceivables, mockSuppliers
 } from './data';
 import { GS1ParsedData } from './utils/gs1Parser';
 import { api, removeToken } from './src/api/client.js';
@@ -38,7 +38,7 @@ interface BranchState {
 export const useBranchStore = create<BranchState>((set, get) => ({
   branches: [],
   currentBranchId: initialBranchId,
-  
+
   // Fetch branches from API
   fetchBranches: async () => {
     try {
@@ -51,27 +51,27 @@ export const useBranchStore = create<BranchState>((set, get) => ({
     } catch (error) {
       console.error('Failed to fetch branches:', error);
       // Fallback to mock branches
-      set({ 
+      set({
         branches: [
-          { 
-            id: 'b1', 
-            name: 'Main Store', 
-            code: 'main-01', 
-            address: 'No. 45, Arzarni Road, Dawei', 
+          {
+            id: 'b1',
+            name: 'Main Store',
+            code: 'main-01',
+            address: 'No. 45, Arzarni Road, Dawei',
             phone: '09-420012345',
             managerName: 'U Mg Mg',
             email: 'branch1@a7systems.com',
-            status: 'active' 
+            status: 'active'
           }
         ]
       });
     }
   },
-  
+
   setBranch: (id: string) => {
     localStorage.setItem('currentBranchId', id);
     set({ currentBranchId: id });
-    
+
     // Trigger sync in other stores
     useProductStore.getState().syncWithBranch(id);
     useCustomerStore.getState().syncWithBranch(id);
@@ -82,11 +82,11 @@ export const useBranchStore = create<BranchState>((set, get) => ({
     useFinanceStore.getState().syncWithBranch(id);
     useSupplierStore.getState().syncWithBranch(id);
   },
-  
+
   getCurrentBranch: () => get().branches.find(b => b.id === get().currentBranchId),
 
-  addBranch: (branch) => set((state) => ({ 
-    branches: [...state.branches, branch] 
+  addBranch: (branch) => set((state) => ({
+    branches: [...state.branches, branch]
   })),
 
   updateBranch: (id, updates) => set((state) => ({
@@ -98,50 +98,50 @@ export const useBranchStore = create<BranchState>((set, get) => ({
 
     // Cascade Delete Effect
     setTimeout(() => {
-        useProductStore.setState(s => ({
-            allProducts: s.allProducts.filter(p => p.branchId !== id),
-            products: s.products.filter(p => p.branchId !== id)
-        }));
-        useCustomerStore.setState(s => ({
-            allCustomers: s.allCustomers.filter(c => c.branchId !== id),
-            customers: s.customers.filter(c => c.branchId !== id)
-        }));
-        useTransactionStore.setState(s => ({
-            allTransactions: s.allTransactions.filter(t => t.branchId !== id),
-            transactions: s.transactions.filter(t => t.branchId !== id)
-        }));
-        useDistributionStore.setState(s => ({
-             allOrders: s.allOrders.filter(o => o.branchId !== id),
-             orders: s.orders.filter(o => o.branchId !== id)
-        }));
-        usePurchaseStore.setState(s => ({
-             allPOs: s.allPOs.filter(p => p.branchId !== id),
-             purchaseOrders: s.purchaseOrders.filter(p => p.branchId !== id)
-        }));
-        useFinanceStore.setState(s => ({
-             allExpenses: s.allExpenses.filter(e => e.branchId !== id),
-             expenses: s.expenses.filter(e => e.branchId !== id),
-             allPayables: s.allPayables.filter(p => p.branchId !== id),
-             payables: s.payables.filter(p => p.branchId !== id),
-             allReceivables: s.allReceivables.filter(r => r.branchId !== id),
-             receivables: s.receivables.filter(r => r.branchId !== id),
-        }));
-        useSupplierStore.setState(s => ({
-             allSuppliers: s.allSuppliers.filter(supplier => supplier.branchId !== id),
-             suppliers: s.suppliers.filter(supplier => supplier.branchId !== id)
-        }));
+      useProductStore.setState(s => ({
+        allProducts: s.allProducts.filter(p => p.branchId !== id),
+        products: s.products.filter(p => p.branchId !== id)
+      }));
+      useCustomerStore.setState(s => ({
+        allCustomers: s.allCustomers.filter(c => c.branchId !== id),
+        customers: s.customers.filter(c => c.branchId !== id)
+      }));
+      useTransactionStore.setState(s => ({
+        allTransactions: s.allTransactions.filter(t => t.branchId !== id),
+        transactions: s.transactions.filter(t => t.branchId !== id)
+      }));
+      useDistributionStore.setState(s => ({
+        allOrders: s.allOrders.filter(o => o.branchId !== id),
+        orders: s.orders.filter(o => o.branchId !== id)
+      }));
+      usePurchaseStore.setState(s => ({
+        allPOs: s.allPOs.filter(p => p.branchId !== id),
+        purchaseOrders: s.purchaseOrders.filter(p => p.branchId !== id)
+      }));
+      useFinanceStore.setState(s => ({
+        allExpenses: s.allExpenses.filter(e => e.branchId !== id),
+        expenses: s.expenses.filter(e => e.branchId !== id),
+        allPayables: s.allPayables.filter(p => p.branchId !== id),
+        payables: s.payables.filter(p => p.branchId !== id),
+        allReceivables: s.allReceivables.filter(r => r.branchId !== id),
+        receivables: s.receivables.filter(r => r.branchId !== id),
+      }));
+      useSupplierStore.setState(s => ({
+        allSuppliers: s.allSuppliers.filter(supplier => supplier.branchId !== id),
+        suppliers: s.suppliers.filter(supplier => supplier.branchId !== id)
+      }));
     }, 0);
-    
+
     if (state.currentBranchId === id) {
-       const newId = newBranches.length > 0 ? newBranches[0].id : '';
-       localStorage.setItem('currentBranchId', newId);
-       
-       if (newId) {
-         setTimeout(() => {
-            useBranchStore.getState().setBranch(newId);
-         }, 0);
-       }
-       return { branches: newBranches, currentBranchId: newId };
+      const newId = newBranches.length > 0 ? newBranches[0].id : '';
+      localStorage.setItem('currentBranchId', newId);
+
+      if (newId) {
+        setTimeout(() => {
+          useBranchStore.getState().setBranch(newId);
+        }, 0);
+      }
+      return { branches: newBranches, currentBranchId: newId };
     }
     return { branches: newBranches };
   })
@@ -157,7 +157,7 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null, 
+  user: null,
   isAuthenticated: false,
   login: async (email: string, password: string) => {
     try {
@@ -206,9 +206,9 @@ export const useCartStore = create<CartState>((set, get) => ({
 
     const existing = get().items.find(i => {
       const productMatch = i.id === product.id;
-      const scannedBatchMatch = transactionData?.scanned_batch 
-          ? i.transaction_data?.scanned_batch === transactionData.scanned_batch
-          : i.selectedBatchId === batchId;
+      const scannedBatchMatch = transactionData?.scanned_batch
+        ? i.transaction_data?.scanned_batch === transactionData.scanned_batch
+        : i.selectedBatchId === batchId;
       const overrideMatch = i.manager_override === override;
 
       return productMatch && scannedBatchMatch && overrideMatch;
@@ -216,22 +216,22 @@ export const useCartStore = create<CartState>((set, get) => ({
 
     if (existing) {
       set({
-        items: get().items.map(i => 
+        items: get().items.map(i =>
           i.cartId === existing.cartId ? { ...i, quantity: i.quantity + 1 } : i
         )
       });
     } else {
-      set({ 
-        items: [...get().items, { 
-          ...product, 
-          cartId: Math.random().toString(), 
-          quantity: 1, 
+      set({
+        items: [...get().items, {
+          ...product,
+          cartId: Math.random().toString(),
+          quantity: 1,
           discount: 0,
           selectedBatchId: batchId || product.batches[0]?.id,
           transaction_data: transactionData,
           warning_flags: warnings,
           manager_override: override
-        }] 
+        }]
       });
     }
   },
@@ -271,7 +271,7 @@ interface ProductState {
 export const useProductStore = create<ProductState>((set, get) => ({
   allProducts: [],
   products: [],
-  
+
   // Fetch products from API
   fetchProducts: async () => {
     try {
@@ -284,20 +284,20 @@ export const useProductStore = create<ProductState>((set, get) => ({
         stockLevel: p.stockLevel || 0,
       }));
       const currentBranchId = useBranchStore.getState().currentBranchId;
-      set({ 
+      set({
         allProducts: transformed,
         products: transformed.filter((p: Product) => p.branchId === currentBranchId)
       });
     } catch (error) {
       console.error('Failed to fetch products:', error);
       // Fallback to mock data on error
-      set({ 
+      set({
         allProducts: mockProducts,
         products: mockProducts.filter(p => p.branchId === initialBranchId)
       });
     }
   },
-  
+
   syncWithBranch: (branchId) => {
     set(state => ({
       products: state.allProducts.filter(p => p.branchId === branchId)
@@ -305,7 +305,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
   },
 
   setProducts: (products) => set({ products }),
-  
+
   addProduct: async (product) => {
     try {
       const newProduct = await api.createProduct(product);
@@ -314,16 +314,16 @@ export const useProductStore = create<ProductState>((set, get) => ({
         batches: newProduct.batches || [],
         price: Number(newProduct.price),
       };
-      set((state) => ({ 
+      set((state) => ({
         allProducts: [transformed, ...state.allProducts],
-        products: [transformed, ...state.products] 
+        products: [transformed, ...state.products]
       }));
     } catch (error) {
       console.error('Failed to create product:', error);
       throw error;
     }
   },
-  
+
   updateProduct: async (id, updates) => {
     try {
       const updated = await api.updateProduct(id, updates);
@@ -345,7 +345,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
       throw error;
     }
   },
-  
+
   deleteProduct: async (id) => {
     try {
       await api.deleteProduct(id);
@@ -377,16 +377,16 @@ export const useProductStore = create<ProductState>((set, get) => ({
         defaultDate.setFullYear(defaultDate.getFullYear() + 1);
         expiryDateValue = defaultDate.toISOString().split('T')[0];
       }
-      
+
       const batchData = {
         batchNumber: batchNumber || 'DEFAULT',
         expiryDate: expiryDateValue,
         quantity: Math.floor(Number(quantity)) || 0,
         costPrice: Number(costPrice) || 0,
       };
-      
+
       await api.createBatch(id, batchData);
-      
+
       // Refresh products to get updated stock levels
       await get().fetchProducts();
     } catch (error) {
@@ -394,99 +394,99 @@ export const useProductStore = create<ProductState>((set, get) => ({
       throw error;
     }
   },
-  
+
   // Legacy local-only increment (kept for backward compatibility, but should use async version)
   _incrementStockLocal: (id, batchNumber, quantity, unit, location, expiryDate, costPrice) => set((state) => {
     const currentBranchId = useBranchStore.getState().currentBranchId;
-    
+
     const updatedAll = state.allProducts.map(p => {
-        if (p.id === id) {
-            let updatedBatches = [...p.batches];
-            // If batch provided, try to find and update it
-            if (batchNumber && batchNumber !== 'DEFAULT') {
-                const batchIndex = updatedBatches.findIndex(b => b.batchNumber === batchNumber);
-                if (batchIndex >= 0) {
-                    updatedBatches[batchIndex] = {
-                        ...updatedBatches[batchIndex],
-                        quantity: updatedBatches[batchIndex].quantity + quantity
-                    };
-                } else {
-                    // Create new batch with passed expiry and cost
-                    updatedBatches.push({
-                        id: `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Use robust ID to prevent collision
-                        batchNumber: batchNumber,
-                        quantity: quantity,
-                        expiryDate: expiryDate || new Date(Date.now() + 31536000000).toISOString().split('T')[0], // Default 1 year if not provided
-                        costPrice: costPrice || 0
-                    });
-                }
-            } else {
-               // No batch info or default batch, just update main stock (or default batch)
-               if (updatedBatches.length > 0) {
-                   updatedBatches[0].quantity += quantity;
-               } else {
-                   // No batches exist, create one
-                   updatedBatches.push({
-                        id: `batch-${Date.now()}`,
-                        batchNumber: 'DEFAULT',
-                        expiryDate: expiryDate || new Date(Date.now() + 31536000000).toISOString().split('T')[0],
-                        quantity: quantity,
-                        costPrice: costPrice || 0
-                    });
-               }
-            }
-            
-            return {
-                ...p,
-                stockLevel: p.stockLevel + quantity,
-                batches: updatedBatches,
-                location: location || p.location, // Update location if provided
-                unit: unit || p.unit // Update unit if provided
+      if (p.id === id) {
+        let updatedBatches = [...p.batches];
+        // If batch provided, try to find and update it
+        if (batchNumber && batchNumber !== 'DEFAULT') {
+          const batchIndex = updatedBatches.findIndex(b => b.batchNumber === batchNumber);
+          if (batchIndex >= 0) {
+            updatedBatches[batchIndex] = {
+              ...updatedBatches[batchIndex],
+              quantity: updatedBatches[batchIndex].quantity + quantity
             };
+          } else {
+            // Create new batch with passed expiry and cost
+            updatedBatches.push({
+              id: `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Use robust ID to prevent collision
+              batchNumber: batchNumber,
+              quantity: quantity,
+              expiryDate: expiryDate || new Date(Date.now() + 31536000000).toISOString().split('T')[0], // Default 1 year if not provided
+              costPrice: costPrice || 0
+            });
+          }
+        } else {
+          // No batch info or default batch, just update main stock (or default batch)
+          if (updatedBatches.length > 0) {
+            updatedBatches[0].quantity += quantity;
+          } else {
+            // No batches exist, create one
+            updatedBatches.push({
+              id: `batch-${Date.now()}`,
+              batchNumber: 'DEFAULT',
+              expiryDate: expiryDate || new Date(Date.now() + 31536000000).toISOString().split('T')[0],
+              quantity: quantity,
+              costPrice: costPrice || 0
+            });
+          }
         }
-        return p;
+
+        return {
+          ...p,
+          stockLevel: p.stockLevel + quantity,
+          batches: updatedBatches,
+          location: location || p.location, // Update location if provided
+          unit: unit || p.unit // Update unit if provided
+        };
+      }
+      return p;
     });
 
     return {
-        allProducts: updatedAll,
-        products: updatedAll.filter(p => p.branchId === currentBranchId)
+      allProducts: updatedAll,
+      products: updatedAll.filter(p => p.branchId === currentBranchId)
     };
   }),
 
   // Used by Expiry Center for Write-offs/Returns
   removeBatchStock: (productId, batchNumber, quantity, reason) => set((state) => {
     const currentBranchId = useBranchStore.getState().currentBranchId;
-    
+
     const updatedAll = state.allProducts.map(p => {
-        if (p.id === productId) {
-            let updatedBatches = [...p.batches];
-            const batchIndex = updatedBatches.findIndex(b => b.batchNumber === batchNumber);
-            
-            if (batchIndex >= 0) {
-                const currentQty = updatedBatches[batchIndex].quantity;
-                const newQty = Math.max(0, currentQty - quantity);
-                
-                if (newQty === 0) {
-                    // Option: Remove batch entirely or keep with 0?
-                    // Let's keep it with 0 for record tracking for now, or filter in view
-                    updatedBatches[batchIndex].quantity = 0;
-                } else {
-                    updatedBatches[batchIndex].quantity = newQty;
-                }
-                
-                return {
-                    ...p,
-                    stockLevel: Math.max(0, p.stockLevel - quantity),
-                    batches: updatedBatches
-                };
-            }
+      if (p.id === productId) {
+        let updatedBatches = [...p.batches];
+        const batchIndex = updatedBatches.findIndex(b => b.batchNumber === batchNumber);
+
+        if (batchIndex >= 0) {
+          const currentQty = updatedBatches[batchIndex].quantity;
+          const newQty = Math.max(0, currentQty - quantity);
+
+          if (newQty === 0) {
+            // Option: Remove batch entirely or keep with 0?
+            // Let's keep it with 0 for record tracking for now, or filter in view
+            updatedBatches[batchIndex].quantity = 0;
+          } else {
+            updatedBatches[batchIndex].quantity = newQty;
+          }
+
+          return {
+            ...p,
+            stockLevel: Math.max(0, p.stockLevel - quantity),
+            batches: updatedBatches
+          };
         }
-        return p;
+      }
+      return p;
     });
 
     return {
-        allProducts: updatedAll,
-        products: updatedAll.filter(p => p.branchId === currentBranchId)
+      allProducts: updatedAll,
+      products: updatedAll.filter(p => p.branchId === currentBranchId)
     };
   })
 }));
@@ -494,142 +494,142 @@ export const useProductStore = create<ProductState>((set, get) => ({
 // --- Scanner History Store & Sync Logic (Persisted) ---
 
 interface ScannerState {
-    scannedItems: ScannedItem[];
-    syncLogs: SyncLog[];
-    
-    // Verification Stage State
-    activeScan: ScannedItem | null;
-    setActiveScan: (item: ScannedItem | null) => void;
-    
-    // Core Actions
-    startScan: (record: GS1ParsedData) => void;
-    confirmAndSync: (verifiedItem: ScannedItem) => Promise<boolean>;
-    
-    addToQueue: (record: GS1ParsedData, manual: boolean) => void; // Legacy compatibility
-    clearHistory: () => void;
-    retrySync: (id: string) => void;
+  scannedItems: ScannedItem[];
+  syncLogs: SyncLog[];
+
+  // Verification Stage State
+  activeScan: ScannedItem | null;
+  setActiveScan: (item: ScannedItem | null) => void;
+
+  // Core Actions
+  startScan: (record: GS1ParsedData) => void;
+  confirmAndSync: (verifiedItem: ScannedItem) => Promise<boolean>;
+
+  addToQueue: (record: GS1ParsedData, manual: boolean) => void; // Legacy compatibility
+  clearHistory: () => void;
+  retrySync: (id: string) => void;
 }
 
 export const useScannerStore = create<ScannerState>()(
-    persist(
-        (set, get) => ({
-            scannedItems: [],
-            syncLogs: [],
-            activeScan: null,
+  persist(
+    (set, get) => ({
+      scannedItems: [],
+      syncLogs: [],
+      activeScan: null,
 
-            setActiveScan: (item) => set({ activeScan: item }),
+      setActiveScan: (item) => set({ activeScan: item }),
 
-            // Step 1: Initialize Scan (Move to Step 2)
-            startScan: (record) => {
-                const user = useAuthStore.getState().user;
-                const newItem: ScannedItem = {
-                    id: Math.random().toString(36).substr(2, 9),
-                    gtin: record.gtin || null,
-                    productName: '', // Will look up later
-                    batchNumber: record.batchNumber || null,
-                    expiryDate: record.expiryDate || null,
-                    serialNumber: record.serialNumber || null,
-                    quantity: 0, // Pending Verification
-                    unit: 'PCS', // Default to generic piece for retail
-                    timestamp: Date.now(),
-                    syncStatus: 'PENDING',
-                    rawData: record.rawData,
-                    type: record.type,
-                    scannedBy: user?.name || 'Unknown',
-                    verified: false
-                };
-                
-                // Check if product exists to pre-fill name
-                const products = useProductStore.getState().allProducts;
-                const match = products.find(p => p.gtin === newItem.gtin);
-                if (match) {
-                    newItem.productName = match.nameEn;
-                    newItem.unit = match.unit; // Default to existing product unit
-                }
+      // Step 1: Initialize Scan (Move to Step 2)
+      startScan: (record) => {
+        const user = useAuthStore.getState().user;
+        const newItem: ScannedItem = {
+          id: Math.random().toString(36).substr(2, 9),
+          gtin: record.gtin || null,
+          productName: '', // Will look up later
+          batchNumber: record.batchNumber || null,
+          expiryDate: record.expiryDate || null,
+          serialNumber: record.serialNumber || null,
+          quantity: 0, // Pending Verification
+          unit: 'PCS', // Default to generic piece for retail
+          timestamp: Date.now(),
+          syncStatus: 'PENDING',
+          rawData: record.rawData,
+          type: record.type,
+          scannedBy: user?.name || 'Unknown',
+          verified: false
+        };
 
-                set({ activeScan: newItem });
-            },
-
-            // Step 3: Confirm & Sync
-            confirmAndSync: async (verifiedItem) => {
-                const productStore = useProductStore.getState();
-                const user = useAuthStore.getState().user;
-
-                // 1. Identify Product
-                let product = productStore.allProducts.find(p => p.gtin === verifiedItem.gtin);
-                
-                // Fallback search
-                if (!product && !verifiedItem.gtin) {
-                     product = productStore.allProducts.find(p => p.sku === verifiedItem.rawData || p.id === verifiedItem.rawData);
-                }
-
-                if (product) {
-                    // Update Inventory
-                    productStore.incrementStock(
-                        product.id, 
-                        verifiedItem.batchNumber, 
-                        verifiedItem.quantity,
-                        verifiedItem.unit,
-                        verifiedItem.location,
-                        verifiedItem.expiryDate || undefined,
-                        verifiedItem.costPrice
-                    );
-
-                    const finalItem: ScannedItem = {
-                        ...verifiedItem,
-                        productName: product.nameEn,
-                        syncStatus: 'SYNCED',
-                        syncMessage: 'Verified & Added',
-                        verified: true
-                    };
-
-                    set(state => ({
-                        activeScan: null,
-                        scannedItems: [finalItem, ...state.scannedItems].slice(0, 500),
-                        syncLogs: [{
-                            id: `log-${Date.now()}`,
-                            scanId: finalItem.id,
-                            action: 'UPDATE',
-                            productName: product ? product.nameEn : 'Unknown',
-                            oldQuantity: product ? product.stockLevel : 0,
-                            newQuantity: product ? product.stockLevel + finalItem.quantity : finalItem.quantity,
-                            timestamp: new Date().toISOString(),
-                            status: 'SUCCESS'
-                        }, ...state.syncLogs].slice(0, 200)
-                    }));
-                    
-                    return true;
-                } else {
-                    const errorItem: ScannedItem = {
-                        ...verifiedItem,
-                        syncStatus: 'ERROR',
-                        syncMessage: 'Product not found. Please add to master list first.',
-                        verified: true
-                    };
-                    
-                    set(state => ({
-                        activeScan: null,
-                        scannedItems: [errorItem, ...state.scannedItems].slice(0, 500)
-                    }));
-                    return false;
-                }
-            },
-
-            // Legacy / Direct queue logic (kept for compatibility if needed)
-            addToQueue: (record, manual) => {
-                 get().startScan(record);
-            },
-            
-            retrySync: (id) => {
-                // Logic to retry failed syncs (omitted for brevity in this step)
-            },
-
-            clearHistory: () => set({ scannedItems: [], syncLogs: [] })
-        }),
-        {
-            name: 'scanner-store-v2',
+        // Check if product exists to pre-fill name
+        const products = useProductStore.getState().allProducts;
+        const match = products.find(p => p.gtin === newItem.gtin);
+        if (match) {
+          newItem.productName = match.nameEn;
+          newItem.unit = match.unit; // Default to existing product unit
         }
-    )
+
+        set({ activeScan: newItem });
+      },
+
+      // Step 3: Confirm & Sync
+      confirmAndSync: async (verifiedItem) => {
+        const productStore = useProductStore.getState();
+        const user = useAuthStore.getState().user;
+
+        // 1. Identify Product
+        let product = productStore.allProducts.find(p => p.gtin === verifiedItem.gtin);
+
+        // Fallback search
+        if (!product && !verifiedItem.gtin) {
+          product = productStore.allProducts.find(p => p.sku === verifiedItem.rawData || p.id === verifiedItem.rawData);
+        }
+
+        if (product) {
+          // Update Inventory
+          productStore.incrementStock(
+            product.id,
+            verifiedItem.batchNumber,
+            verifiedItem.quantity,
+            verifiedItem.unit,
+            verifiedItem.location,
+            verifiedItem.expiryDate || undefined,
+            verifiedItem.costPrice
+          );
+
+          const finalItem: ScannedItem = {
+            ...verifiedItem,
+            productName: product.nameEn,
+            syncStatus: 'SYNCED',
+            syncMessage: 'Verified & Added',
+            verified: true
+          };
+
+          set(state => ({
+            activeScan: null,
+            scannedItems: [finalItem, ...state.scannedItems].slice(0, 500),
+            syncLogs: [{
+              id: `log-${Date.now()}`,
+              scanId: finalItem.id,
+              action: 'UPDATE',
+              productName: product ? product.nameEn : 'Unknown',
+              oldQuantity: product ? product.stockLevel : 0,
+              newQuantity: product ? product.stockLevel + finalItem.quantity : finalItem.quantity,
+              timestamp: new Date().toISOString(),
+              status: 'SUCCESS'
+            }, ...state.syncLogs].slice(0, 200)
+          }));
+
+          return true;
+        } else {
+          const errorItem: ScannedItem = {
+            ...verifiedItem,
+            syncStatus: 'ERROR',
+            syncMessage: 'Product not found. Please add to master list first.',
+            verified: true
+          };
+
+          set(state => ({
+            activeScan: null,
+            scannedItems: [errorItem, ...state.scannedItems].slice(0, 500)
+          }));
+          return false;
+        }
+      },
+
+      // Legacy / Direct queue logic (kept for compatibility if needed)
+      addToQueue: (record, manual) => {
+        get().startScan(record);
+      },
+
+      retrySync: (id) => {
+        // Logic to retry failed syncs (omitted for brevity in this step)
+      },
+
+      clearHistory: () => set({ scannedItems: [], syncLogs: [] })
+    }),
+    {
+      name: 'scanner-store-v2',
+    }
+  )
 );
 
 // Customer Store
@@ -736,8 +736,8 @@ export const useTransactionStore = create<any>((set) => ({
     });
   }
 }));
-export const useDistributionStore = create<any>((set) => ({ orders: mockDistributionOrders, allOrders: mockDistributionOrders, syncWithBranch: () => {}, addOrder: () => {}, updateOrder: () => {}, deleteOrder: () => {} }));
-export const usePurchaseStore = create<any>((set) => ({ purchaseOrders: mockPurchaseOrders, allPOs: mockPurchaseOrders, syncWithBranch: () => {}, addPO: () => {}, updatePO: () => {}, deletePO: () => {} }));
-export const useFinanceStore = create<any>((set) => ({ expenses: mockExpenses, allExpenses: mockExpenses, payables: mockPayables, allPayables: mockPayables, receivables: mockReceivables, allReceivables: mockReceivables, syncWithBranch: () => {}, addExpense: () => {}, removeExpense: () => {}, markPayablePaid: () => {}, markReceivableCollected: () => {} }));
-export const useSupplierStore = create<any>((set) => ({ suppliers: mockSuppliers, allSuppliers: mockSuppliers, syncWithBranch: () => {}, addSupplier: () => {}, updateSupplier: () => {}, deleteSupplier: () => {} }));
-export const useSettingsStore = create<any>((set) => ({ settings: { companyName: 'A7 Smart POS' }, updateSettings: () => {} }));
+export const useDistributionStore = create<any>((set) => ({ orders: mockDistributionOrders, allOrders: mockDistributionOrders, syncWithBranch: () => { }, addOrder: () => { }, updateOrder: () => { }, deleteOrder: () => { } }));
+export const usePurchaseStore = create<any>((set) => ({ purchaseOrders: mockPurchaseOrders, allPOs: mockPurchaseOrders, syncWithBranch: () => { }, addPO: () => { }, updatePO: () => { }, deletePO: () => { } }));
+export const useFinanceStore = create<any>((set) => ({ expenses: mockExpenses, allExpenses: mockExpenses, payables: mockPayables, allPayables: mockPayables, receivables: mockReceivables, allReceivables: mockReceivables, syncWithBranch: () => { }, addExpense: () => { }, removeExpense: () => { }, markPayablePaid: () => { }, markReceivableCollected: () => { } }));
+export const useSupplierStore = create<any>((set) => ({ suppliers: mockSuppliers, allSuppliers: mockSuppliers, syncWithBranch: () => { }, addSupplier: () => { }, updateSupplier: () => { }, deleteSupplier: () => { } }));
+export const useSettingsStore = create<any>((set) => ({ settings: { companyName: 'Ace POS System' }, updateSettings: () => { } }));

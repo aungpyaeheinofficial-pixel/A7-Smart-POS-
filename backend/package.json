@@ -1,7 +1,7 @@
 {
-  "name": "a7-smart-pos-backend",
+  "name": "ace-pos-system-backend",
   "version": "1.0.0",
-  "description": "A7 Smart POS Backend API",
+  "description": "Ace POS System Backend API",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
@@ -53,4 +53,3 @@
     "node": ">=20.0.0"
   }
 }
-
